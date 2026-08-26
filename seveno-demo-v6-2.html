@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seven O — Your WhatsApp answers itself</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap');
+  :root {
+    --page:#F6F7F5;--card:#FFFFFF;--ink:#17221C;--muted:#5F6D66;--line:#E3E7E3;
+    --wa-teal:#075E54;--wa-out:#DCF8C6;--wa-green:#25D366;--wa-green-dark:#128C43;
+    --money-hi:#FFE55C;--urgent:#E53935;--good:#1FA855;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Barlow',sans-serif;background:var(--page);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+  /* TOP BAR */
+  .topbar{position:sticky;top:0;z-index:100;background:rgba(246,247,245,0.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+  .wordmark{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;letter-spacing:0.02em;text-transform:uppercase}
+  .wordmark .o{color:var(--wa-green-dark)}
+  .cta-pill{background:var(--wa-green-dark);color:#fff;font-family:'Barlow',sans-serif;font-weight:700;font-size:14px;border:none;border-radius:100px;padding:10px 18px;cursor:pointer;display:flex;align-items:center;gap:7px;text-decoration:none;transition:transform .12s,background .2s}
+  .cta-pill:hover{background:var(--wa-teal)}
+
+  /* HERO */
+  .hero{text-align:center;padding:28px 20px 14px;max-width:480px;margin:0 auto}
+  .hero h1{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:clamp(34px,9vw,46px);line-height:1.02;text-transform:uppercase}
+  .hero h1 .grn{color:var(--wa-green-dark)}
+  .hero .sub{font-size:16px;color:var(--muted);line-height:1.45;margin-top:10px;font-weight:500}
+  .hero .sub strong{color:var(--ink);font-weight:700}
+
+  /* ===== SCENARIO PICKER ===== */
+  .picker{max-width:400px;margin:0 auto;padding:0 0 0 0;position:relative}
+  .picker-label{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:10px;padding:0 20px;transition:opacity .3s}
+  .picker.dimmed .picker-label{opacity:.3}
+  .picker-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:10px;padding:0 20px}
+  .picker-track::-webkit-scrollbar{display:none}
+  .picker-card{flex:0 0 78%;scroll-snap-align:start;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .15s,opacity .3s;position:relative;min-height:0}
+  .picker-card:last-child{margin-right:0}
+  .picker-card:active{transform:scale(.97)}
+  .picker-card.active{border-color:var(--wa-green-dark);box-shadow:0 0 0 2px rgba(18,140,67,.15)}
+  .picker-card.watched{opacity:.5}
+  .picker-card.watched:hover{opacity:.7}
+  .picker-card.watched .pc-check{display:flex}
+  .pc-top{display:flex;align-items:center;gap:10px}
+  .pc-emoji{font-size:20px;flex-shrink:0}
+  .pc-hook{font-family:'Barlow',sans-serif;font-size:14.5px;font-weight:700;color:var(--ink);line-height:1.25;flex:1}
+  .pc-check{display:none;width:20px;height:20px;border-radius:50%;background:var(--wa-green);align-items:center;justify-content:center;flex-shrink:0}
+  .pc-check::after{content:'✓';font-size:10px;color:#fff;font-weight:700}
+  .pc-when{font-family:'Barlow',sans-serif;font-size:12px;font-weight:500;color:var(--muted);margin-top:5px;padding-left:30px}
+  .picker.dimmed .picker-card:not(.active){opacity:.2;pointer-events:none}
+
+  /* DOTS */
+  .picker-dots{display:flex;justify-content:center;gap:7px;margin-top:10px;padding:0 20px}
+  .picker-dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:background .3s,transform .3s}
+  .picker-dot.on{background:var(--wa-green-dark);transform:scale(1.25)}
+
+  /* ===== MONEY SCOREBOARD ===== */
+  .money-line{max-width:380px;margin:0 auto;padding:0 20px;text-align:center;max-height:0;overflow:hidden;opacity:0;transition:opacity .6s,max-height .4s,margin .4s}
+  .money-line.show{opacity:1;max-height:100px;margin:10px auto 0}
+  .ml-label{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:2px}
+  .ml-value{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:38px;line-height:1;display:inline-block;padding:2px 10px;background:linear-gradient(180deg,transparent 30%,var(--money-hi) 30%,var(--money-hi) 90%,transparent 90%)}
+  .ml-watched{font-size:11.5px;color:var(--muted);font-weight:500;margin-top:4px}
+
+  /* ===== STATUS BAR ===== */
+  .status-bar{max-width:380px;margin:12px auto 0;padding:0 20px}
+  .sb-inner{
+    background:var(--card);border:1.5px solid var(--line);border-radius:14px;
+    padding:10px 14px;display:flex;align-items:center;gap:10px;
+    box-shadow:0 2px 10px rgba(23,34,28,.06);
+    position:relative;z-index:0;
+    opacity:0;transition:opacity .4s;
+  }
+  .sb-inner.show{opacity:1}
+  .sb-inner::before{content:'';position:absolute;inset:-1.5px;border-radius:15px;z-index:-2;
+    background:conic-gradient(from var(--spin,0deg),#25D366,#128C43,#065F46,#0D9488,#34D399,#25D366);
+    opacity:0;transition:opacity .4s}
+  .sb-inner::after{content:'';position:absolute;inset:0;border-radius:14px;z-index:-1;background:var(--card);transition:background .6s}
+  .sb-inner.thinking::before{opacity:1;animation:conicSpin 2.2s ease-in-out infinite}
+  .sb-inner.alert::before{opacity:1;animation:conicSpin 2.2s ease-in-out infinite;
+    background:conic-gradient(from var(--spin,0deg),var(--urgent),#B71C1C,#FF5252,#EF5350,#FF8A80,var(--urgent))}
+  .sb-inner.delivered{border-color:var(--wa-green-dark)}
+  .sb-inner.delivered::before{opacity:0;transition:opacity 0.4s ease-out}
+  .sb-inner.delivered::after{background:var(--wa-green-dark)}
+  .sb-inner.delivered .sb-txt{color:#fff;-webkit-text-fill-color:#fff;background:none;animation:none}
+  .sb-inner.delivered .sb-pip{background:rgba(255,255,255,.3)}
+  .sb-inner.delivered .sb-pip.on{background:#fff}
+  .sb-inner.delivered .sb-dot{border-color:rgba(255,255,255,.3)}
+  .sb-inner.delivered .sb-dot::before{border-top-color:#fff}
+  .sb-inner.alert{border-color:var(--urgent)}
+  .sb-inner.alert .sb-txt{color:var(--urgent);-webkit-text-fill-color:var(--urgent)}
+  .sb-inner.alert .sb-txt.thinking{background:linear-gradient(90deg,var(--urgent) 40%,#FF8A80 50%,var(--urgent) 60%);background-size:200% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .sb-inner.alert .sb-dot::before{border-top-color:var(--urgent)}
+
+  .sb-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;background:#fff;position:relative;border:1.5px solid var(--line);transition:border-color .3s}
+  .sb-dot::before{content:'';position:absolute;inset:-1.5px;border-radius:50%;border:1.5px solid transparent;border-top-color:var(--wa-green);opacity:0;transition:opacity .3s}
+  .sb-dot.think::before{opacity:1;animation:arcSpin .9s linear infinite}
+  @keyframes arcSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+
+  .sb-txt{flex:1;min-width:0;font-family:'Barlow',sans-serif;font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sb-txt.thinking{background:linear-gradient(90deg,var(--ink) 40%,var(--muted) 50%,var(--ink) 60%);background-size:200% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 2s ease-in-out infinite}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  .sb-pips{display:flex;gap:5px;flex-shrink:0}
+  .sb-pip{width:10px;height:10px;border-radius:50%;background:var(--line);transition:background .5s,box-shadow .5s;display:grid;place-items:center}
+  .sb-pip.on{background:var(--wa-green);box-shadow:0 0 0 2px rgba(37,211,102,.2)}
+  .sb-pip.on::after{content:'✓';font-size:7px;color:#fff;font-weight:700;line-height:1}
+  .sb-pip.warn{background:#E9B949;box-shadow:0 0 0 2px rgba(233,185,73,.2)}
+  .sb-pip.warn::after{content:'!';font-size:7px;color:#fff;font-weight:700;line-height:1}
+  .sb-pip.fail{background:var(--urgent);box-shadow:0 0 0 2px rgba(229,57,53,.15)}
+  .sb-pip.fail::after{content:'✕';font-size:7px;color:#fff;font-weight:700;line-height:1}
+
+  /* ===== CHAT ===== */
+  .chat-stage{max-width:380px;margin:10px auto 0;padding:0 20px;height:280px;position:relative;overflow:hidden;display:none}
+  .chat-stage.visible{display:block}
+  .chat-frame{border:1px solid var(--line);border-radius:16px;height:100%;position:relative;overflow:hidden;padding:0}
+  .chat-frame::before{content:'';position:absolute;top:0;left:0;right:0;height:50px;background:linear-gradient(to bottom,var(--page) 0%,var(--page) 15%,transparent 100%);z-index:2;pointer-events:none;border-radius:16px 16px 0 0}
+  .chat-window{display:flex;flex-direction:column;gap:8px;position:absolute;bottom:10px;left:12px;right:12px}
+  .chat-stage.expanded .chat-frame{height:auto;overflow:visible}
+  .chat-stage.expanded .chat-frame::before{display:none}
+  .chat-stage.expanded .chat-window{position:relative;bottom:auto;left:auto;right:auto;padding:12px}
+  .chat-stage.expanded{height:auto;overflow:visible}
+
+  .bubble{max-width:82%;padding:10px 14px 7px;border-radius:18px;font-size:15px;line-height:1.45;position:relative;word-wrap:break-word;opacity:0;transform:translateY(10px)}
+  .bubble.show{opacity:1;transform:none;transition:opacity .5s ease,transform .5s ease}
+  .bubble.exit{opacity:0;max-height:0;padding-top:0;padding-bottom:0;margin:0;overflow:hidden;transition:opacity .8s ease,max-height .9s .1s ease,padding .9s .1s ease,margin .9s .1s ease}
+  .bubble .time{font-size:10.5px;color:rgba(0,0,0,.3);float:right;margin:4px 0 -2px 10px}
+  .in{background:var(--card);align-self:flex-start;border-bottom-left-radius:4px;box-shadow:0 1px 4px rgba(23,34,28,.08)}
+  .out{background:var(--wa-out);align-self:flex-end;border-bottom-right-radius:4px;box-shadow:0 1px 4px rgba(23,34,28,.06)}
+  .sender-label{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}
+  .in .sender-label{color:var(--wa-green-dark)}
+  .out .sender-label{color:#5A7A5E}
+  .sys-note{align-self:flex-start;max-width:92%;background:#FFF9E6;border:1px solid #F2E3A6;color:#7A6410;font-size:12.5px;padding:9px 13px;border-radius:14px;line-height:1.45;opacity:0;transform:translateY(8px)}
+  .sys-note.show{opacity:1;transform:none;transition:opacity .5s,transform .5s}
+  .typing-wrap{align-self:flex-start;display:inline-flex;gap:5px;background:var(--card);padding:14px 18px;border-radius:18px;border-bottom-left-radius:4px;box-shadow:0 1px 4px rgba(23,34,28,.08)}
+  .typing-wrap span{width:8px;height:8px;border-radius:50%;background:#B5BFB8;animation:blink 1.3s infinite}
+  .typing-wrap span:nth-child(2){animation-delay:.2s}
+  .typing-wrap span:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,60%,100%{opacity:.3}30%{opacity:1}}
+  .vn{display:flex;align-items:center;gap:8px;min-width:175px}
+  .vn-play{width:28px;height:28px;border-radius:50%;background:var(--wa-green);display:grid;place-items:center;flex-shrink:0;font-size:10px;color:#fff}
+  .vn-wave{flex:1;display:flex;align-items:center;gap:2px;height:20px}
+  .vn-wave i{flex:1;background:rgba(0,0,0,.25);border-radius:2px;display:block}
+  .vn-dur{font-size:10.5px;color:rgba(0,0,0,.45);flex-shrink:0}
+
+  /* Conic gradient on bot bubbles */
+  @property --spin{syntax:'<angle>';initial-value:0deg;inherits:false}
+  .bubble.ai-thinking{position:relative;z-index:0;background:var(--card)}
+  .bubble.ai-thinking::before{content:'';position:absolute;inset:-1.5px;border-radius:19px;z-index:-2;background:conic-gradient(from var(--spin,0deg),#25D366,#128C43,#065F46,#0D9488,#34D399,#25D366);animation:conicSpin 2.2s ease-in-out infinite}
+  .bubble.ai-thinking::after{content:'';position:absolute;inset:0;border-radius:18px;z-index:-1;background:var(--card)}
+  @keyframes conicSpin{0%{--spin:0deg}15%{--spin:120deg}30%{--spin:140deg}50%{--spin:300deg}65%{--spin:310deg}85%{--spin:350deg}100%{--spin:360deg}}
+  .bubble.ai-settled::before,.bubble.ai-settled::after{opacity:0;transition:opacity 0.4s ease-out}
+  .ai-dots{display:inline-flex;gap:5px;padding:4px 2px}
+  .ai-dots span{width:7px;height:7px;border-radius:50%;background:#B5BFB8;animation:blink 1.3s infinite}
+  .ai-dots span:nth-child(2){animation-delay:.2s}
+  .ai-dots span:nth-child(3){animation-delay:.4s}
+
+  /* JOB CARD */
+  .job-card{background:#fff;border-radius:16px;padding:16px;border-left:4px solid var(--good);box-shadow:0 2px 12px rgba(23,34,28,.08);opacity:0;transform:scale(0.95) translateY(14px)}
+  .job-card.show{opacity:1;transform:none;transition:opacity .5s ease,transform .6s cubic-bezier(0.175,0.885,0.32,1.1)}
+  .chat-frame.pulse{animation:framePulse 1s ease-out}
+  @keyframes framePulse{0%{border-color:var(--wa-green);box-shadow:0 0 0 0 rgba(37,211,102,.3)}40%{border-color:var(--wa-green);box-shadow:0 0 0 6px rgba(37,211,102,.1)}100%{border-color:var(--line);box-shadow:none}}
+  .landed-line{font-family:'Barlow',sans-serif;font-size:13px;font-weight:600;color:var(--wa-green-dark);display:flex;align-items:center;gap:7px;margin-bottom:10px;opacity:0;transform:translateY(6px)}
+  .landed-line.show{opacity:1;transform:none;transition:opacity .4s,transform .4s}
+  .jc-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+  .jc-tag{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:8px 14px;border-radius:100px;cursor:pointer;display:flex;align-items:center;gap:8px;-webkit-tap-highlight-color:transparent;transition:background .15s}
+  .jc-tag:active{filter:brightness(.92)}
+  .jc-tag::after{content:'▾ Why?';font-size:11px;font-weight:700;opacity:.7;transition:transform .2s}
+  .jc-tag.open::after{content:'▴ Hide';transform:none}
+  .jc-score{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.03em}
+  .jc-why{font-size:12px;color:var(--muted);margin-top:2px;cursor:pointer;font-weight:600}
+  .jc-logic{max-height:0;overflow:hidden;transition:max-height .3s ease,margin .3s ease;margin:0}
+  .jc-logic.open{max-height:200px;margin:8px 0 4px}
+  .jc-logic-inner{display:flex;flex-direction:column;gap:5px;padding:10px 12px;background:rgba(0,0,0,.03);border-radius:10px}
+  .jc-crit{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;line-height:1.4}
+  .jc-crit-icon{flex-shrink:0;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:8px;font-weight:700;color:#fff;margin-top:1px}
+  .jc-crit-icon.pass{background:var(--wa-green)}
+  .jc-crit-icon.fail{background:#D4D9D6}
+  .jc-crit-label{font-weight:700;color:var(--ink)}
+  .jc-crit-why{color:var(--muted);font-weight:500}
+  .jc-money{margin-left:auto;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:30px;line-height:1;padding:2px 8px;background:linear-gradient(180deg,transparent 32%,var(--money-hi) 32%,var(--money-hi) 88%,transparent 88%)}
+  .jc-title{font-weight:700;font-size:16px;margin-bottom:9px}
+  .jc-rows{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+  .jc-row{display:flex;font-size:13.5px;gap:8px}
+  .jc-row .k{color:var(--muted);width:76px;flex-shrink:0;font-weight:500}
+  .jc-row .v{color:var(--ink);font-weight:600}
+  .jc-row .v.flag{color:#B7791F}
+  .jc-note{font-size:13px;color:var(--muted);font-style:italic;border-top:1px solid var(--line);padding-top:9px;margin-top:4px;line-height:1.5}
+  .jc-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+  .jc-btn{border:none;border-radius:10px;padding:12px 8px;font-family:'Barlow',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;color:#fff;transition:transform .12s}
+  .jc-btn:active{transform:scale(.95)}
+  .jc-btn.call{background:var(--wa-green-dark)}
+  .jc-btn.later{background:#8A968F}
+  .jc-btn.urgent-call{background:var(--urgent);grid-column:span 2}
+  .jc-toast{text-align:center;font-size:12.5px;font-weight:600;color:var(--wa-green-dark);background:#EDFAF1;border:1px solid #C4EDD2;border-radius:100px;padding:8px 14px;margin-top:8px}
+
+  /* STING */
+  .sting{max-width:380px;margin:0 auto;padding:0 20px;text-align:center;font-size:15px;font-weight:600;color:var(--urgent);line-height:1.5;max-height:0;overflow:hidden;opacity:0;transition:opacity .6s,max-height .4s,margin .4s}
+  .sting.show{opacity:1;max-height:80px;margin:16px auto 0}
+
+  /* CONTROLS */
+  .controls-bar{max-width:380px;margin:10px auto 0;padding:0 20px;display:flex;align-items:center;gap:12px;opacity:0;transition:opacity .3s}
+  .controls-bar.show{opacity:1}
+  .speed-control{flex:1;display:flex;align-items:center;gap:8px}
+  .speed-control label{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+  .speed-control input[type="range"]{flex:1;height:4px;-webkit-appearance:none;appearance:none;background:var(--line);border-radius:4px;outline:none}
+  .speed-control input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--wa-green-dark);cursor:pointer;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+  .speed-val{font-size:12px;font-weight:700;color:var(--ink);min-width:32px;text-align:center}
+
+  /* INLINE CTA (appears after 2 watched) */
+  .inline-cta{max-width:380px;margin:0 auto;padding:0 20px;text-align:center;opacity:0;transform:translateY(12px);transition:opacity .6s,transform .6s,max-height .4s,margin .4s;pointer-events:none;max-height:0;overflow:hidden}
+  .inline-cta.show{opacity:1;transform:none;pointer-events:auto;max-height:500px;margin:24px auto 0}
+  .inline-cta-inner{background:var(--card);border:2px solid var(--wa-green-dark);border-radius:16px;padding:20px;box-shadow:0 4px 20px rgba(18,140,67,.1)}
+  .inline-cta h3{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;text-transform:uppercase;line-height:1.1;margin-bottom:4px}
+  .inline-cta .ic-money{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:40px;line-height:1.1;display:inline-block;padding:2px 10px;margin:6px 0;background:linear-gradient(180deg,transparent 28%,var(--money-hi) 28%,var(--money-hi) 90%,transparent 90%)}
+  .inline-cta .ic-sub{font-size:14px;color:var(--muted);font-weight:500;line-height:1.5;margin-bottom:16px}
+  .inline-cta .ic-btn{display:inline-flex;align-items:center;gap:10px;background:var(--wa-green-dark);color:#fff;text-decoration:none;font-family:'Barlow',sans-serif;font-weight:700;font-size:16px;border:none;border-radius:100px;padding:14px 30px;cursor:pointer;box-shadow:0 6px 20px rgba(18,140,67,.35);transition:transform .12s}
+  .inline-cta .ic-btn:hover{background:var(--wa-teal)}
+  .inline-cta .ic-small{font-size:12px;color:var(--muted);margin-top:10px}
+  .inline-cta .ic-more{display:inline-block;margin-top:12px;font-size:13px;font-weight:600;color:var(--wa-green-dark);cursor:pointer;text-decoration:none;border:none;background:none}
+  .inline-cta .ic-more:hover{text-decoration:underline}
+
+  /* OBJECTIONS */
+  .objections{max-width:380px;margin:30px auto 0;padding:0 20px}
+  .obj-heading{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;text-transform:uppercase;text-align:center;margin-bottom:16px;line-height:1.1}
+  .obj-list{background:var(--card);border:1.5px solid var(--line);border-radius:14px;overflow:hidden}
+  .obj-card{border-bottom:1px solid var(--line);cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .obj-card:last-child{border-bottom:none}
+  .obj-q{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--ink);line-height:1.3;padding:14px 16px;display:flex;align-items:center;gap:10px}
+  .obj-q::after{content:'＋';color:var(--muted);margin-left:auto;flex-shrink:0;font-size:16px;font-weight:700;transition:transform .2s}
+  .obj-card.open .obj-q::after{content:'－'}
+  .obj-a{font-size:14px;color:var(--muted);line-height:1.5;font-weight:500;max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease;padding:0 16px}
+  .obj-card.open .obj-a{max-height:120px;padding:0 16px 14px}
+  .obj-a strong{color:var(--ink);font-weight:700}
+  .obj-footer{text-align:center;margin-top:18px;font-size:14px;color:var(--wa-green-dark);font-weight:700;line-height:1.5;padding:14px 16px;background:#F2FCF5;border-radius:12px;border:1.5px solid rgba(37,211,102,.2)}
+
+  .footer-note{max-width:380px;margin:30px auto 34px;padding:0 20px;text-align:center;font-size:12.5px;color:#94A09A;line-height:1.6}
+
+  @media(max-width:400px){.sb-inner{padding:8px 12px}}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+  <div class="topbar"><div class="wordmark">Seven <span class="o">O</span></div><a class="cta-pill" href="#" onclick="scrollToCTA(event)">📞 Book a call</a></div>
+  <div class="hero">
+    <h1>Your WhatsApp<br><span class="grn">answers itself</span></h1>
+    <p class="sub">Watch real enquiries get handled, priced and delivered — <strong>while you're on the tools.</strong></p>
+  </div>
+
+  <!-- SCENARIO PICKER -->
+  <div class="picker" id="picker">
+    <div class="picker-label">Pick a scenario</div>
+    <div class="picker-track" id="picker-grid"></div>
+    <div class="picker-dots" id="picker-dots"></div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <div class="sb-inner" id="sb">
+      <div class="sb-dot" id="sb-dot"></div>
+      <div class="sb-txt" id="sb-txt"></div>
+      <div class="sb-pips" id="sb-pips"></div>
+    </div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="chat-stage" id="chat-stage"><div class="chat-frame"><div id="chat" class="chat-window"></div></div></div>
+
+  <!-- CONTROLS -->
+  <div class="controls-bar" id="controls-bar">
+    <div class="speed-control"><label>Speed</label><input type="range" id="speed-slider" min="0.2" max="2" step="0.1" value="0.4"><span class="speed-val" id="speed-val">0.4×</span></div>
+  </div>
+
+  <div class="sting" id="sting"></div>
+
+  <!-- MONEY SCOREBOARD -->
+  <div class="money-line" id="money-line">
+    <div class="ml-label">Work landed while you watched</div>
+    <div class="ml-value" id="ml-value">£0</div>
+    <div class="ml-watched" id="ml-watched"></div>
+  </div>
+
+  <!-- INLINE CTA (appears after 2 watched) -->
+  <div class="inline-cta" id="inline-cta">
+    <div class="inline-cta-inner">
+      <h3>That's your week<br>handled.</h3>
+      <div class="ic-money" id="ic-money">£0</div>
+      <div class="ic-sub">Handled, priced and delivered without you touching your phone once.</div>
+      <a class="ic-btn" id="book" href="#" onclick="return bookCall(event)">📞 Book a call with Seven O</a>
+      <div class="ic-small">15 minutes. No hard sell. We'll set it up on your own WhatsApp number.</div>
+      <button class="ic-more" id="ic-more" onclick="showRemainingScenarios()">↑ Watch the other scenarios</button>
+    </div>
+  </div>
+
+  <div class="objections">
+    <div class="obj-heading">You're probably thinking…</div>
+    <div class="obj-list">
+      <div class="obj-card" onclick="this.classList.toggle('open')"><div class="obj-q">What if I don't want to give prices?</div><div class="obj-a"><strong>You set the rules.</strong> If you never want to quote, it won't. It'll just gather the details and let you decide.</div></div>
+      <div class="obj-card" onclick="this.classList.toggle('open')"><div class="obj-q">Those aren't the questions I'd ask</div><div class="obj-a"><strong>Every question is yours.</strong> You tell Seven O what to ask — access, parking, photos, boiler make — whatever matters to your trade.</div></div>
+      <div class="obj-card" onclick="this.classList.toggle('open')"><div class="obj-q">What if it turns away work I'd want?</div><div class="obj-a"><strong>It never turns work away.</strong> Every lead comes to you — flagged, prioritised and scored. You always decide.</div></div>
+    </div>
+    <div class="obj-footer">Seven O learns your trade, your prices, and your rules.<br>It's not a generic bot — it's trained to sound like you.</div>
+  </div>
+  <p class="footer-note">This is a demo — no real messages were sent. Every scenario is based on real enquiries UK trades receive every week.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const chat=$('chat');
+let running=false,curClock='—',moneyTotal=0,moneyDisplay=0;
+const played=new Set();
+let SPEED=0.4;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms/SPEED));
+$('speed-slider').addEventListener('input',function(){SPEED=parseFloat(this.value);$('speed-val').textContent=SPEED.toFixed(1)+'×'});
+function firstName(){return "Dave"}
+
+const SCENARIOS = [
+  {
+    id:'missed', emoji:'🕑', label:'The 2pm message you missed', when:'Tuesday 2:14pm', clock:'14:14',
+    checks:[{id:'job',label:'What\'s the job?'},{id:'loc',label:'Where are they?'},{id:'budget',label:'Can they pay?'},{id:'time',label:'When do they want it?'},{id:'comp',label:'Anyone else quoting?'}],
+    turns:[
+      {from:'cust',text:"Hi, saw your van round Croydon. Looking to get our bathroom done",ai:"New enquiry received — Dave's on the tools, Seven O picks up instantly",
+        blog:"2:14pm. Dave's mid-tile on another job. This would normally sit unread until tonight."},
+      {from:'bot',text:"Hi! {FIRST}'s assistant here 👋 Happy to help. Is it a full refit or a specific repair?",ai:"Responding in 12 seconds — determining job scope before anything else",
+        blog:"Replied in 12 seconds. Customer doesn't know it's not Dave."},
+      {from:'cust',text:"Full refit. Rip out the old suite, new one in, retile floor to ceiling",ai:"Job classified: full bathroom refit — estimated value £5k–£12k, high priority",
+        bcheck:{id:'job',status:'done'}, blog:"Full bathroom refit. That's a £5k–£12k job. Worth taking seriously."},
+      {from:'bot',text:"Nice job. Whereabouts are you? Postcode area is fine.",ai:"Requesting postcode to verify against 15-mile service area radius",
+        blog:"Checking they're local before anyone wastes time."},
+      {from:'cust',text:"CR0, near the town centre",ai:"Location confirmed CR0 — 3 miles from base, well within service area ✓",
+        bcheck:{id:'loc',status:'done'}, blog:"CR0 — about 3 miles away. On the doorstep ✓"},
+      {from:'bot',text:"Right on the doorstep. Do you have a rough budget in mind?",ai:"Qualifying budget — minimum viable threshold for full refit is £5,000",
+        blog:"The big question. Budget under £5k on a full refit means it's not happening."},
+      {from:'cust',text:"Around 7 to 8 grand. Want it done properly rather than cheap",ai:"Budget £7–8k confirmed — exceeds minimum, quality-focused language detected ✓",
+        bcheck:{id:'budget',status:'done'}, blog:"£7–8k on the table. And 'done properly' — they're not shopping on price. Good sign."},
+      {from:'bot',text:"That's realistic for a full refit done well. When are you hoping to start?",ai:"Assessing timeline urgency — immediate need scores higher than browsing",
+        blog:"Now checking when. 'Someday' means browsing. A date means buying."},
+      {from:'cust',text:"Next few weeks ideally. Barely usable as it is",ai:"Timeline: 2–3 weeks, bathroom barely usable — motivated buyer confirmed ✓",
+        bcheck:{id:'time',status:'done'}, blog:"Weeks, not months — and the bathroom's barely usable. They need this done."},
+      {from:'bot',text:"Understood. Last one — had other quotes yet, or are we first?",ai:"Competition check — first quote vs multiple quotes changes follow-up strategy",
+        blog:"Last check: are we racing three other quotes or is this ours to lose?"},
+      {from:'cust',text:"You're the first. Liked your reviews",ai:"No competing quotes, source: online reviews — recommend same-day callback ✓",
+        bcheck:{id:'comp',status:'done'}, blog:"First in. No other quotes. Call today and this job is yours."},
+      {from:'bot',text:"Brilliant. Sent everything to {FIRST} — he'll call you today to book a look. Speak soon! 🔧",ai:"All 5 criteria passed — score 95/100, compiling lead card for delivery",
+        blog:"All five boxes ticked. Packaging it up for Dave's phone now."},
+    ],
+    job:{tag:'CALL NOW', score:'5/5', tagColor:'#E53935', money:'£7,500', title:'Full bathroom refit',
+      criteria:[{label:'Budget',pass:true,why:'£7–8k matches full refit range'},{label:'Timeline',pass:true,why:'Wants it in 3 weeks — motivated'},{label:'Competition',pass:true,why:'You\'re the only quote'},{label:'Distance',pass:true,why:'CR0 — 3 miles from base'},{label:'Readiness',pass:true,why:'"Barely usable" — they need this done'}],
+      rows:[['Job','Full refit — suite + retile'],['Where','Croydon CR0 — 3 miles'],['When','Next 3 weeks'],['Quotes','You\'re first — no one else in']],
+      note:'"Came in at 2:14pm while you were tiling. Replied in 12 seconds. £7–8k, ready to go, no other quotes. Call them today."'},
+    sting:"Without this? You see it at 7pm, reply, and hear nothing. They booked someone else at 3.",
+    money:7500
+  },
+  {
+    id:'voice', emoji:'🎙', label:'The rambling voice note', when:'Wednesday 7:52am', clock:'07:52',
+    checks:[{id:'media',label:'Voice note understood'},{id:'job',label:'What\'s the job?'},{id:'loc',label:'Where are they?'},{id:'budget',label:'Price expectations set'},{id:'time',label:'When do they want it?'}],
+    turns:[
+      {from:'cust',voice:'0:19',ai:"Processing 19-second voice note — transcribing speech to extract job details",
+        bcheck:{id:'media',status:'done'}, blog:"19-second voice note. Listening and writing it out — so nobody has to play it three times."},
+      {from:'sys',text:"🎙 Heard: \"Right so — it's the en-suite shower. Been leaking about a month now, tiles have come away at the bottom. Wondering what you'd charge. We're in Purley. Next month'd be fine.\"",ai:"Entities extracted: shower leak, tiles lifting, Purley, next month — 4 answers from 1 message",
+        blog:"Got the lot from one rambling message: shower leak, tiles lifting, Purley, next month. Four answers, zero questions asked."},
+      {from:'bot',text:"Morning! Got your message 👋 Just so I've got it right — leaking en-suite shower in Purley, tiles lifting, looking at next month?",ai:"Reflecting extracted details back to customer for confirmation before proceeding",
+        bcheck:{id:'job',status:'done'}, blog:"Playing it back to them to confirm before anyone drives anywhere."},
+      {from:'cust',text:"That's it exactly. How'd you get all that from a voice note 😄",ai:"All details confirmed by customer — Purley CR8 within service area, impressed by accuracy ✓",
+        bcheck:{id:'loc',status:'done'}, blog:"Confirmed. Purley's in your patch ✓ Customer's impressed — that reflects on your business."},
+      {from:'bot',text:"Bit of magic 😄 If water's been getting behind for a month, there may be board damage. Worth budgeting £2–3k rather than a patch-up. Sound alright?",ai:"Proactive scope flag: 1 month water ingress likely means board rot behind tiles",
+        blog:"A month of water behind tiles usually means rotten board. Setting the price at £2–3k NOW — so there's no awkward conversation on site."},
+      {from:'cust',text:"Yeah that's fine, figured it might be worse than it looks",ai:"Budget £2–3k accepted — customer pre-warned on scope, no sticker shock risk ✓",
+        bcheck:{id:'budget',status:'done'}, blog:"£2–3k accepted before you've even seen it. No sticker shock later."},
+      {from:'bot',text:"Great. Sending this to {FIRST} now — he'll arrange a look. Enjoy your morning!",ai:"All 5 criteria passed — score 95/100, compiling lead card for delivery",
+        bcheck:{id:'time',status:'done'}, blog:"Flexible timing, price agreed, all confirmed. Packaging it up."},
+    ],
+    job:{tag:'CALL NOW', score:'4/5', tagColor:'#E53935', money:'£2,500', title:'En-suite shower — leak + retile',
+      criteria:[{label:'Budget',pass:true,why:'£2–3k agreed upfront'},{label:'Timeline',pass:false,why:'Next month — not urgent'},{label:'Competition',pass:true,why:'No mention of other quotes'},{label:'Distance',pass:true,why:'Purley CR8 — in your patch'},{label:'Readiness',pass:true,why:'Leak active for a month — needs sorting'}],
+      rows:[['Job','Leak, tiles lifting, likely board rot'],['Where','Purley CR8'],['When','Next month, flexible'],['From','One 19-second voice note']],
+      note:'"All from one rambling voice note before 8am. Price already agreed. Just needs a date."'},
+    sting:"Without this? You play that voice note twice in the van, still miss the postcode, and ring back two days late.",
+    money:2500
+  },
+  {
+    id:'race', emoji:'⚡', label:'\"I\'m messaging a few people\"', when:'Thursday 9:31am', clock:'09:31',
+    checks:[{id:'job',label:'What\'s the job?'},{id:'loc',label:'Where are they?'},{id:'comp',label:'Competition handled'},{id:'edge',label:'First responder advantage'},{id:'booked',label:'Visit locked in'}],
+    turns:[
+      {from:'cust',text:"Hi, need a new boiler fitted. Messaging a few people for quotes",ai:"Competitive lead detected — customer comparing multiple tradespeople, speed matters",
+        blog:"They've told us we're racing. Whoever qualifies fastest and sounds most professional wins."},
+      {from:'bot',text:"Hi! {FIRST}'s assistant here 👋 We fit boilers every week — let me get you a quick answer. What type of property is it?",ai:"Establishing credibility immediately — 'we fit boilers every week' signals experience",
+        bcheck:{id:'job',status:'done'}, blog:"No waffling. Straight into qualification. The other plumbers haven't replied yet."},
+      {from:'cust',text:"3 bed semi. Current boiler's about 18 years old, keeps cutting out",ai:"3-bed semi, 18yr boiler, intermittent failure — straightforward swap, good margin job",
+        blog:"18-year-old boiler cutting out. This isn't a repair, it's a replacement. Good job."},
+      {from:'bot',text:"18 years — definitely time for a new one. Whereabouts are you?",ai:"Confirming replacement need, requesting location for service area check",
+        blog:"Validated their instinct that it needs replacing. Now checking distance."},
+      {from:'cust',text:"SE25. When could someone come out?",ai:"SE25 confirmed — 5 miles from base, within service area ✓",
+        bcheck:{id:'loc',status:'done'}, blog:"SE25, five miles away. And they're asking about availability — buying signal."},
+      {from:'bot',text:"Nice and local. {FIRST}'s usually doing surveys Tuesdays and Thursdays — I can get him to ring you today to lock in a time. That way you've got a proper quote before the weekend.",ai:"Creating urgency with specific availability — anchoring against competitor response time",
+        bcheck:{id:'comp',status:'done'}, blog:"Gave them specific days, not 'we'll be in touch.' And framed it as getting a quote before the weekend — while the others are still replying to the first message."},
+      {from:'cust',text:"That'd be great actually, none of the others have even replied yet 😂",ai:"Competitor gap confirmed — we're first to respond and first to offer a date ✓",
+        bcheck:{id:'edge',status:'done'}, blog:"There it is. The others haven't even replied. We've already offered a survey date."},
+      {from:'bot',text:"Ha! We'll keep that lead then 😄 {FIRST} will call you this afternoon. Cheers!",ai:"Visit commitment secured — compiling lead card with competitive advantage noted",
+        bcheck:{id:'booked',status:'done'}, blog:"Locked in. By the time the other plumbers reply tonight, Dave's already called."},
+    ],
+    job:{tag:'CALL TODAY', score:'3/5', tagColor:'#E67E22', money:'£2,800', title:'Boiler replacement — 3 bed semi',
+      criteria:[{label:'Budget',pass:true,why:'Standard boiler swap range'},{label:'Timeline',pass:true,why:'Wants a survey this week'},{label:'Competition',pass:false,why:'Messaging multiple plumbers'},{label:'Distance',pass:true,why:'SE25 — 5 miles'},{label:'Readiness',pass:false,why:'Comparing quotes — not committed yet'}],
+      rows:[['Job','New boiler — 18yr old failing'],['Where','SE25 — 5 miles'],['When','Survey Tue/Thu, quote by Friday'],['Competition','3+ others — none replied yet']],
+      note:'"This one\'s a race and you\'re winning it. They said nobody else has even replied. Call this afternoon and it\'s yours."'},
+    sting:"Without this? Three plumbers all reply at 7pm. Same message, same odds. You're just another quote.",
+    money:2800
+  },
+  {
+    id:'waster', emoji:'⚠️', label:'The £1,500 budget mismatch', when:'Friday 10:08am', clock:'10:08',
+    checks:[{id:'job',label:'What\'s the job?'},{id:'budget',label:'Can they pay?'},{id:'alt',label:'Options explored'},{id:'outcome',label:'Flagged for you'}],
+    turns:[
+      {from:'cust',text:"how much for a full bathroom",ai:"Analysing incoming message — checking intent, tone and urgency level",
+        blog:"Price-first, no details. Might be a price-shopper — let's qualify properly before flagging."},
+      {from:'bot',text:"Hi! Depends on spec. Is it a full rip-out and refit, or updating what's there?",ai:"Determining job scope — full refit vs repair affects pricing bracket significantly",
+        blog:"No numbers without knowing the job. A price in the dark helps nobody."},
+      {from:'cust',text:"full one. new bath shower sink tiles the lot",ai:"Job classified: full bathroom refit — cross-referencing against minimum budget threshold",
+        bcheck:{id:'job',status:'done'}, blog:"Full refit, everything new. That's £6,000 minimum. Now the money question."},
+      {from:'bot',text:"Got it. Do you have a budget in mind?",ai:"Qualifying budget — minimum viable threshold for full refit is £5,000",
+        blog:"This is where the lead gets scored. Big gap = flagged, not rejected."},
+      {from:'cust',text:"about 1500, got a mate who can do the tiling",ai:"⚠ Budget mismatch detected — flagging for review, not rejecting",alert:true,
+        bcheck:{id:'budget',status:'fail'}, blog:"⚠ £1,500 for a £6,000+ job. Big gap — but that's your call to make, not mine. Flagging it."},
+      {from:'bot',text:"Full refits tend to start higher than that, but let me pass this to {FIRST} so he can have a proper chat about what's possible within your budget.",ai:"Keeping the door open — routing to you with full context attached",
+        blog:"Not rejecting. Setting expectations gently and routing back to you with the flag."},
+      {from:'cust',text:"oh right, what about just fitting if I buy everything myself",ai:"Customer exploring labour-only alternative — noting for your review",
+        bcheck:{id:'alt',status:'warn'}, blog:"They're flexible on approach. Labour-only might work. Adding this to the brief."},
+      {from:'bot',text:"That's definitely something {FIRST} could look at. I'll include that in the notes so he can give you proper options. 👍",ai:"Capturing alternative scope — adding labour-only interest to lead notes",
+        blog:"Captured their flexibility. You'll see both the original ask AND the fallback option."},
+      {from:'cust',text:"ok cheers, get him to give me a bell",ai:"Lead confirmed — customer waiting for callback",
+        bcheck:{id:'outcome',status:'done'}, blog:"They're waiting for your call. You've got full context: budget, scope, and their willingness to flex."},
+      {from:'bot',text:"Will do — he'll be in touch shortly. Cheers! 👍",ai:"Lead packaged with budget flag — routing to your phone now",
+        blog:"Lead delivered with budget warning. Your call whether it's worth a visit or a quick phone chat."},
+    ],
+    job:{tag:'YOUR CALL', score:'2/5', tagColor:'#8A968F', money:'Flagged', title:'Full refit wanted — £1,500 budget',
+      criteria:[{label:'Budget',pass:false,why:'£1,500 for a £6,000+ job'},{label:'Timeline',pass:false,why:'No date mentioned'},{label:'Competition',pass:true,why:'No mention of others'},{label:'Distance',pass:true,why:'Local area'},{label:'Readiness',pass:false,why:'Exploring options, not committed'}],
+      rows:[['Wanted','Full refit, all new'],['Also asked','Labour-only if they supply'],['Status','Waiting for your call']],
+      note:'"Budget\'s way under for a full job — but they\'re flexible and waiting for your call. Might be a labour-only. Worth 5 minutes on the phone."', filtered:true},
+    sting:"Without this? You'd have driven there, measured up, quoted £6k — and never heard from them again.",
+    money:0
+  }
+];
+
+/* BUILD PICKER */
+function buildPicker(){
+  const grid=$('picker-grid');
+  const dots=$('picker-dots');
+  grid.innerHTML='';dots.innerHTML='';
+  SCENARIOS.forEach((sc,i)=>{
+    const card=document.createElement('div');
+    card.className='picker-card'+(played.has(sc.id)?' watched':'');
+    card.id='pc-'+sc.id;
+    card.innerHTML='<div class="pc-top"><div class="pc-emoji">'+sc.emoji+'</div><div class="pc-hook">'+sc.label+'</div><div class="pc-check"></div></div><div class="pc-when">'+sc.when+'</div>';
+    card.onclick=()=>playScenario(i);
+    grid.appendChild(card);
+    const dot=document.createElement('div');
+    dot.className='picker-dot'+(i===0?' on':'');
+    dot.id='pdot-'+i;
+    dots.appendChild(dot);
+  });
+  // Scroll → dot sync
+  let scrollTimeout;
+  grid.addEventListener('scroll',()=>{
+    clearTimeout(scrollTimeout);
+    scrollTimeout=setTimeout(()=>{
+      const cardW=grid.querySelector('.picker-card').offsetWidth+10;
+      const idx=Math.round(grid.scrollLeft/cardW);
+      document.querySelectorAll('.picker-dot').forEach((d,i)=>d.classList.toggle('on',i===idx));
+    },60);
+  });
+}
+
+/* Scroll picker to a specific card */
+function scrollPickerTo(idx){
+  const grid=$('picker-grid');
+  const cards=grid.querySelectorAll('.picker-card');
+  if(cards[idx]){
+    cards[idx].scrollIntoView({behavior:'smooth',inline:'start',block:'nearest'});
+    document.querySelectorAll('.picker-dot').forEach((d,i)=>d.classList.toggle('on',i===idx));
+  }
+}
+
+/* STATUS BAR */
+function setStatus(text,mode){
+  const sb=$('sb'),dot=$('sb-dot'),txt=$('sb-txt');
+  sb.classList.remove('alert','delivered','thinking');
+  txt.textContent=text.replace(/\{FIRST\}/g,firstName());
+  dot.className='sb-dot';txt.className='sb-txt';
+  if(mode==='alert'){sb.classList.add('alert','thinking');dot.classList.add('think');txt.classList.add('thinking')}
+  else if(mode==='delivered'){sb.classList.add('delivered')}
+  else if(mode){sb.classList.add('thinking');dot.classList.add('think');txt.classList.add('thinking')}
+  sb.classList.add('show');
+}
+function hideStatus(){$('sb').classList.remove('show')}
+function initPips(checks){
+  const c=$('sb-pips');c.innerHTML='';
+  (checks||[]).forEach(ch=>{const p=document.createElement('div');p.className='sb-pip';p.id='pip-'+ch.id;c.appendChild(p)});
+}
+function setPip(id,s){
+  const p=$('pip-'+id);if(!p)return;p.classList.remove('on','warn','fail');
+  if(s==='done')p.classList.add('on');else if(s==='warn')p.classList.add('warn');else if(s==='fail')p.classList.add('fail');
+}
+
+/* CHAT */
+const MAX_VISIBLE=3;
+function trimChat(){
+  const bubbles=chat.querySelectorAll('.bubble.show,.sys-note.show');
+  if(bubbles.length>MAX_VISIBLE){for(let i=0;i<bubbles.length-MAX_VISIBLE;i++){const b=bubbles[i];b.classList.remove('show');b.classList.add('exit');setTimeout(()=>b.remove(),1100)}}
+}
+function addBubble(text,dir,label){
+  trimChat();const b=document.createElement('div');b.className='bubble '+dir;
+  const lbl=label?'<div class="sender-label">'+label+'</div>':'';
+  b.innerHTML=lbl+text.replace(/\{FIRST\}/g,firstName())+'<span class="time">'+curClock+'</span>';
+  chat.appendChild(b);requestAnimationFrame(()=>requestAnimationFrame(()=>b.classList.add('show')));return b;
+}
+function addVoice(dur){
+  trimChat();const b=document.createElement('div');b.className='bubble out';
+  let bars='';for(let i=0;i<20;i++)bars+='<i style="height:'+Math.round(20+Math.random()*75)+'%"></i>';
+  b.innerHTML='<div class="sender-label">Customer</div><div class="vn"><div class="vn-play">▶</div><div class="vn-wave">'+bars+'</div><div class="vn-dur">'+dur+'</div></div><span class="time">'+curClock+'</span>';
+  chat.appendChild(b);requestAnimationFrame(()=>requestAnimationFrame(()=>b.classList.add('show')));
+}
+function addSys(text){trimChat();const t=document.createElement('div');t.className='sys-note';t.textContent=text;chat.appendChild(t);requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')))}
+async function typeOut(text,dir,label){
+  trimChat();const b=document.createElement('div');b.className='bubble '+dir;
+  const lbl=label?'<div class="sender-label">'+label+'</div>':'';
+  const span=document.createElement('span');b.innerHTML=lbl;b.appendChild(span);
+  b.insertAdjacentHTML('beforeend','<span class="time">'+curClock+'</span>');
+  chat.appendChild(b);requestAnimationFrame(()=>requestAnimationFrame(()=>b.classList.add('show')));
+  const resolved=text.replace(/\{FIRST\}/g,firstName());let i=0;
+  while(i<resolved.length){const chunk=Math.min(resolved.length-i,1+Math.floor(Math.random()*2));span.textContent+=resolved.slice(i,i+chunk);i+=chunk;await new Promise(r=>setTimeout(r,22+Math.random()*28))}
+  return b;
+}
+
+/* JOB CARD */
+function renderJob(job){
+  const actions=job.urgent?'<button class="jc-btn urgent-call">📞 Call them now</button>':job.filtered?'<button class="jc-btn later" style="grid-column:span 2">📞 Give them a ring — your call</button>':'<button class="jc-btn call">📞 Call them</button><button class="jc-btn later">⏰ Ring back later</button>';
+
+  const criteriaHTML=job.criteria?job.criteria.map(c=>
+    '<div class="jc-crit"><div class="jc-crit-icon '+(c.pass?'pass':'fail')+'">'+(c.pass?'✓':'—')+'</div><span class="jc-crit-label">'+c.label+'</span> <span class="jc-crit-why">'+c.why+'</span></div>'
+  ).join(''):'';
+
+  const card=document.createElement('div');card.className='job-card';card.style.borderLeftColor=job.tagColor;
+  card.innerHTML=
+    '<div class="jc-head">'+
+      '<span class="jc-tag" id="jc-tag-toggle" style="background:'+job.tagColor+'1A;color:'+job.tagColor+'">'+job.tag+' · '+job.score+'</span>'+
+    '</div>'+
+    '<div class="jc-logic" id="jc-logic"><div class="jc-logic-inner">'+criteriaHTML+'</div></div>'+
+    '<div class="jc-money" style="margin-bottom:10px">'+job.money+'</div>'+
+    '<div class="jc-title">'+job.title+'</div>'+
+    '<div class="jc-rows">'+job.rows.map(r=>'<div class="jc-row"><span class="k">'+r[0]+'</span><span class="v'+(r[2]==='flag'?' flag':'')+'">'+r[1]+'</span></div>').join('')+'</div>'+
+    '<div class="jc-note">'+job.note.replace(/\{FIRST\}/g,firstName())+'</div>'+
+    '<div class="jc-actions">'+actions+'</div>';
+
+  chat.appendChild(card);requestAnimationFrame(()=>requestAnimationFrame(()=>card.classList.add('show')));
+
+  // Tappable priority
+  const tagEl=card.querySelector('#jc-tag-toggle');
+  const logicEl=card.querySelector('#jc-logic');
+  tagEl.onclick=()=>{tagEl.classList.toggle('open');logicEl.classList.toggle('open')};
+
+  card.querySelectorAll('.jc-btn').forEach(btn=>{btn.onclick=()=>{if(card.querySelector('.jc-toast'))return;const t=document.createElement('div');t.className='jc-toast';t.textContent='📞 In real life, this dials the customer';card.appendChild(t)}});
+}
+
+/* PICKER STATE */
+function setPickerState(mode, activeIdx){
+  const picker=$('picker');
+  picker.classList.remove('dimmed');
+  if(mode==='dimmed'){
+    picker.classList.add('dimmed');
+    document.querySelectorAll('.picker-card').forEach((c,i)=>{
+      c.classList.toggle('active',i===activeIdx);
+    });
+  } else {
+    document.querySelectorAll('.picker-card').forEach(c=>c.classList.remove('active'));
+  }
+}
+
+function updateWatchedCount(){
+  const count=played.size;
+  const total=SCENARIOS.length;
+  if(count>0){
+    $('ml-watched').textContent=count+' of '+total+' scenarios watched';
+  }
+}
+
+function checkCTA(){
+  if(played.size>=2){
+    $('ic-money').textContent='£'+moneyTotal.toLocaleString();
+    $('inline-cta').classList.add('show');
+    // hide "watch others" if all done
+    if(played.size>=SCENARIOS.length){
+      $('ic-more').style.display='none';
+    } else {
+      $('ic-more').style.display='';
+    }
+  }
+}
+
+function showRemainingScenarios(){
+  $('inline-cta').classList.remove('show');
+  $('picker').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+/* PLAY */
+async function playScenario(idx){
+  if(running)return;running=true;
+  const sc=SCENARIOS[idx];
+
+  // UI setup
+  hideStatus();
+  $('sting').classList.remove('show');
+  $('inline-cta').classList.remove('show');
+  $('chat-stage').classList.remove('expanded');
+  $('chat-stage').classList.add('visible');
+  $('controls-bar').classList.add('show');
+  chat.innerHTML='';curClock=sc.clock;
+  initPips(sc.checks);
+  setPickerState('dimmed',idx);
+  scrollPickerTo(idx);
+  setStatus('New message…',true);
+
+  for(const turn of sc.turns){
+    await sleep(800);
+    if(turn.from==='cust'){
+      if(turn.voice){await sleep(600);addVoice(turn.voice)}
+      else{await typeOut(turn.text,'out','Customer')}
+      setStatus(turn.ai,turn.alert?'alert':true);
+    }else if(turn.from==='sys'){
+      setStatus(turn.ai,true);await sleep(800);addSys(turn.text);
+    }else{
+      setStatus(turn.ai,turn.alert?'alert':true);
+      trimChat();
+      const glow=document.createElement('div');glow.className='bubble in ai-thinking';
+      glow.innerHTML='<div class="sender-label">Seven O</div><span class="ai-dots"><span></span><span></span><span></span></span>';
+      chat.appendChild(glow);requestAnimationFrame(()=>requestAnimationFrame(()=>glow.classList.add('show')));
+      await sleep(1100);glow.remove();
+      const b=addBubble(turn.text,'in','Seven O');b.classList.add('ai-thinking');
+      setTimeout(()=>{b.classList.remove('ai-thinking');b.classList.add('ai-settled')},1200);
+    }
+    if(turn.bcheck)setPip(turn.bcheck.id,turn.bcheck.status);
+  }
+
+  await sleep(900);
+  setStatus('Packaging the job for Dave…',true);await sleep(1800);
+
+  $('chat-stage').classList.add('expanded');chat.innerHTML='';
+  setStatus('📲  New message — check your phone','delivered');
+
+  const frame=document.querySelector('.chat-frame');
+  frame.classList.remove('pulse');void frame.offsetWidth;frame.classList.add('pulse');
+
+  const ll=document.createElement('div');ll.className='landed-line';
+  ll.innerHTML='📲 New message on your WhatsApp';
+  chat.appendChild(ll);
+  await sleep(300);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>ll.classList.add('show')));
+  await sleep(500);
+
+  renderJob(sc.job);
+  await sleep(2000);
+
+  // Sting
+  await sleep(700);$('sting').textContent=sc.sting;$('sting').classList.add('show');
+
+  // Score
+  if(!played.has(sc.id)){played.add(sc.id);moneyTotal+=sc.money;animateMoney()}
+  $('money-line').classList.add('show');
+  updateWatchedCount();
+
+  // Mark card as watched, restore picker
+  const pcCard=$('pc-'+sc.id);
+  if(pcCard)pcCard.classList.add('watched');
+  setPickerState('open');
+
+  // Scroll to next unwatched scenario
+  const nextUnwatched=SCENARIOS.findIndex(s=>!played.has(s.id));
+  if(nextUnwatched>=0)scrollPickerTo(nextUnwatched);
+
+  await sleep(700);
+  checkCTA();
+
+  running=false;
+}
+
+function animateMoney(){
+  const target=moneyTotal;
+  const step=Math.max(1,Math.round((target-moneyDisplay)/40));
+  const tick=()=>{
+    if(moneyDisplay<target){
+      moneyDisplay=Math.min(moneyDisplay+step,target);
+      $('ml-value').textContent='£'+moneyDisplay.toLocaleString();
+      requestAnimationFrame(tick);
+    }
+  };tick();
+}
+
+function scrollToCTA(e){
+  e.preventDefault();
+  const cta=$('inline-cta');
+  if(cta.classList.contains('show')){
+    cta.scrollIntoView({behavior:'smooth',block:'center'});
+  } else {
+    alert('Replace with your Calendly link');
+  }
+}
+function bookCall(e){e.preventDefault();alert('Replace with your Calendly link');return false}
+
+// INIT
+buildPicker();
+setTimeout(()=>playScenario(0),900);
+</script>
+</body>
+</html>
